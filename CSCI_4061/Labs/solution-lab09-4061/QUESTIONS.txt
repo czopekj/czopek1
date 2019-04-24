@@ -1,0 +1,248 @@
+                           __________________
+
+                            LAB 09 QUESTIONS
+                           __________________
+
+
+- Name: (FILL THIS in)
+- NetID: (THE kauf0095 IN kauf0095@umn.edu)
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `server_em.c'
+=======================
+
+A
+~
+
+  Examine the source code for `em_server.c'. Describe the
+  `requests.fifo' item that it creates.  Resolve theses specific items
+  1. What system call is used initially to delete any existing version
+     of `requests.fifo'?
+  2. What system call is used to create `requests.fifo'?
+  3. What system call is used to set up reading from `requests.fifo'?
+
+
+Solution                                                      :solution:
+--------
+
+  1. `remove()' which will remove any existing versions of the FIFO
+  2. `mkfifo()' which creates a named pipe (FIFO) with read/write
+     permissions by the user
+  3. `open()' is used and by default opens the FIFO in read/write mode
+
+
+B
+~
+
+  In the main `while()' loop of the server, describe how the server
+  handles requests from the client.
+  1. What C data type represents the requests from clients and what
+     parts does it have?
+  2. How does the server use the request data to search for a name/email
+     association?
+  3. How does the server use the request data to communicate back to the
+     client?
+
+
+Solution                                                      :solution:
+--------
+
+  1. The `requests_t' type is used and has two string fields for the
+     name of the client FIFO and the name of the person whose email
+     address should be looked up.
+  2. The `requests.query_name' is used to check against each name in the
+     array of data. If a matching name is found, the associated email
+     address is stored as the response.
+  3. The server opens the FIFO mentioned in `requst.client_fifo' then
+     writes the response email address to it.
+
+
+PROBLEM 2 `em_client.c' and Protocol
+====================================
+
+A
+~
+
+  Examine the code for `em_client.c'. Describe the steps that it
+  performs to contact the server to make a request and then receive the
+  response.  Describe how system calls are used in this process.
+
+
+Solution                                                      :solution:
+--------
+
+  1. Creates a response FIFO with `mkfifo()' based on the process ID of
+     the client obtained via `getpid()'
+  2. Formulates a `request_t' struct based on the command line argument
+     for the name.
+  3. Uses `open()' on the `requests.fifo' and then `write()''s the
+     request to it.
+  4. Then `open()''s the client response FIFO and `read()''s a string
+     from it into a local buffer.
+  5. Prints results and closes both FIFOs and removes the client FIFO.
+
+
+B
+~
+
+  Describe the overall Protocol of communication of between the server
+  and client. Which entity is responsible for creating, reading, and
+  writing each FIFO at what time.
+
+
+Solution                                                      :solution:
+--------
+
+  1. The server be started first and must create the `requests.fifo'
+  2. Clients can then be started and create their own response FIFOs
+  3. Clients write their request into `requests.fifo' and then open and
+     read from their personal client FIFO.
+  4. The server is in a loop and will read a request. On reading a
+     request, it will look of the name and then write a response back on
+     the client FIFO.
+
+
+C
+~
+
+  Use the provided script `run_simulation.sh <N>' to launch start a
+  server and run a specified number of clients such as 5 as below
+  ,----
+  | > ./run_simulation.sh 5
+  | SERVER 14205: starting up
+  | SERVER 14205: created new requests.fifo, now opening it
+  | SERVER 14205: opened requests.fifo, listening for requests
+  | CLIENT 14208: sending request: {fifo_file='14208.fifo' query_name='Christopher Jonathan' }
+  | CLIENT 14208: opening '14208.fifo'
+  | ...
+  | SERVER 14205: closing connection to fifo '14212.fifo'
+  | CLIENT 14211: response for name 'Dan Knights' is email 'knights@cs.umn.edu'
+  | CLIENT 14212: response for name 'George Karypis' is email 'karypis@cs.umn.edu'
+  | > 
+  `----
+  Examine the output for this run along with running the simulation
+  several more times with different numbers of clients.
+
+  Explain why there never seems to be any problem with multiple clients
+  overwriting data associated with each other particularly in the
+  `requests.fifo' and the client responses.
+
+
+Solution                                                      :solution:
+--------
+
+  The operating system manages the write and read positions of pipes and
+  FIFOs. Every client who calls `write()' on `requests.fifo' will make
+  atomic writes to the pipe and advance the write position. Thus there
+  will never be conflict between requests as the write position is
+  coordinate and controlled by the OS to prevent overwriting.
+
+  Response to clients is never problematic as it is done in individual
+  FIFOs.
+
+
+PROBLEM 3: Pitfalls
+===================
+
+A
+~
+
+  Compile the server/client with `make' and run the server via
+  ,----
+  | > ./em_server
+  `----
+  Note the output that it prints. Then kill the server, perhaps with a
+  C-c interrupt signal.
+
+  Edit the `em_server.c' code to use the line marked `ALTERNATE
+  OPEN'. You should comment on the preceding `open()' line to get
+  ,----
+  | // int requests_fd = open("requests.fifo", O_RDWR);               // open FIFO read/write to avoid blocking
+  | int requests_fd = open("requests.fifo", O_RDONLY);             // ALTERNATE OPEN: read only
+  `----
+
+  Recompile and re-run `em_server' and explain why the output of the
+  server changes in this case. To understand the change in output, you
+  may need to review what happens when a process opens only one end of a
+  pipe/FIFO.
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | > make
+  | gcc -Wall -g -o em_server em_server.c
+  | > ./em_server 
+  | SERVER  4654: starting up
+  | SERVER  4654: created new requests.fifo, now opening it
+  | SERVER  4654: opened FIFO, listening for requests
+  |   C-c C-c
+  | 
+  | > # edit so that ALTERNATE OPEN is uncommented
+  | 
+  | > make
+  | gcc -Wall -g -o em_server em_server.c
+  | > ./em_server 
+  | SERVER  4665: starting up
+  | SERVER  4665: created new requests.fifo, now opening it
+  |   C-c C-c
+  `----
+
+  In the second case, the server stalls at opening the FIFO. This is
+  because the default behavior of `open()''ing a pipe/FIFO is to block
+  if the other end is not open. When opening read only in the ALTERNATE
+  version, no clients of have yet connected so the server blocks. This
+  is not a problem if the server opens the FIFO for reading AND writing:
+  even though it will not write to the pipe, the read/write will allow
+  control the proceed beyond the `open()' call reporting the next line
+  of output.
+
+
+B
+~
+
+  With the ALTERNATE OPEN line in use (uncommented), run the
+  `run_simulation.sh 5' script a few times until it appears to stall and
+  fail to complete.
+
+  Examine the output of the simulation run carefully and find a line
+  involving the server that gives some hints as to why the simulation
+  fails. Show that line below.
+
+
+Solution                                                      :solution:
+--------
+
+  During a run the following line should appear:
+  ,----
+  | SERVER: read 0 bytes from requests.fifo; empty pipe, exiting
+  `----
+
+
+C
+~
+
+  Do some careful thinking, reading, and exploration and explain why the
+  ALTERNATE OPEN line creates a flaw in the server/client protocol that
+  is NOT present in the original version.
+
+
+Solution                                                      :solution:
+--------
+
+  The ALTERNATE OPEN sees the server open `requests.fifo' in read-only
+  mode.  When a client opens the FIFO, the server has a "partner" to
+  work on the pipe.  However, if the client closes `requests.fifo'
+  before any other client opens the FIFO, the server will see that the
+  pipe is now empty receiving 0 bytes on a `read()' leading it to
+  exit. This is undesirable as it is intended that the server stay open
+  indefinitely.
+
+  The original line opens `requests.fifo' in read/write mode so the
+  server will always see that some entity can write to the pipe. This
+  means it will always block on `read()' until a client `write()''s to
+  it rather than seeing the pipe as empty.

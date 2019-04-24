@@ -1,0 +1,132 @@
+                           __________________
+
+                            LAB 12 QUESTIONS
+                           __________________
+
+
+- Name: Josh Czopek
+- NetID: czope001
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1: Spell Checking Busily
+================================
+
+A
+~
+
+  Examine the file `check_spelling_busy.c' which performs the simple
+  task of spell checking words that are typed into the terminal using
+  pthreads.  Compile this program with the provided `Makefile' and run
+  it showing your results below.
+
+Enter words to check spelling, Ctrl-d to end input
+hello world this is josh helno
+'hello' ok
+'world' ok
+'this' ok
+'is' ok
+'josh' ok
+'helno' INCORRECT
+
+
+B
+~
+
+  Examine the source code for `check_spelling_busy.c' and describe the
+  basic architecture of how input is accepted and spell checking is
+  done.  Describe what data structure is used to coordinate reading and
+  checking the spelling of words. How is access to this data structure
+  controlled so that the threads to not corrupt it.
+
+  input is accepted and checked by using mutexes to access the list of words.
+  the read and write commands both have access to an array of word inputs, and
+  the mutexes ensure that only one has access to the array at a time.
+
+
+C
+~
+
+  Identify what conditions are required for each of the thread types to
+  make progress: what must be true about the shared data structure in
+  order for them to proceed? How are these conditions checked?
+
+  read_words will only try to read words if there is space in the queue.
+  check_words will only try to check the spelling if there are words in the queue
+
+
+D
+~
+
+  Time the following run of `check_spelling_busy'.
+  1. Start the program via `time ./check_spelling_busy'
+  2. Type the word 'hello' and press enter
+  3. Type Ctrl-d to end input
+
+  Report your timing for this run below which should appear somewhat
+  strange.  Attempt to explain this strange behavior based on your
+  observations of thread behavior above.
+
+
+PROBLEM 2: Spell Checking Efficiently
+=====================================
+
+A
+~
+
+  Examine the code for `check_spelling_condvar.c' which introduces
+  Pthread Condition Variables.  First, run the same experiment and
+  compare the timing to this new version:
+
+  1. Start the program via `time ./check_spelling_condvar'
+  2. Type the word 'hello' and press enter
+  3. Type Ctrl-d to end input
+
+
+B
+~
+
+  Much of the code between `check_spelling_busy' and
+  `check_spelling_condvar' is identical. An important difference is in
+  the portion where threads determine whether the conditions to proceed
+  have been met.
+
+  Examine closely the sections of code that `check_spelling_condvar.c'
+  use to determine when the reader thread can add something to the queue
+  and when checker thread has a word to check. Describe these
+  changes. Research the new functions that are used and briefly describe
+  them.
+
+
+C
+~
+
+  What function call do the two threads use to communicate that the
+  'condition' of the queue has changed? What affect does this function
+  have on the other thread?
+
+
+D
+~
+
+  This spell checking code is an instance of the classic
+  producer/consumer coordination problem where two different types of
+  threads/processes exist: one producing data (the reader in this case)
+  and the other consuming it (the spell checker in this case).  When
+  these threads can only proceed under different conditions, condition
+  variables make their coordination more efficient than would be
+  possible based on locks (mutexes) alone.
+
+  Benchmark the efficiency of spell-checking 100 words using the
+  following commands to compare the two variations. Show your code below
+  and describe the timing differences.
+
+  ,----
+  | > time tail -100 english-dict.txt | ./check_spelling_busy > /dev/null
+  | ...
+  |
+  | > time tail -100 english-dict.txt | ./check_spelling_condvar > /dev/null
+  | ...
+  `----

@@ -1,0 +1,297 @@
+                           __________________
+
+                            LAB 06 QUESTIONS
+                           __________________
+
+
+- Name: (FILL THIS in)
+- NetID: (THE kauf0095 IN kauf0095@umn.edu)
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete the
+lab.
+
+
+PROBLEM 1: Binary File Format w/ Read
+=====================================
+
+A
+~
+
+  Compile all programs in the lab code directory with the provided
+  `Makefile'.  Run the command
+  ,----
+  | ./make_dept_directory cse_depts.dat
+  `----
+  to create the `cse_depts.dat' binary file. Examine the source code for
+  this program the header `department.h'. Explain the format of the
+  binary file `cse_depts.dat'.
+  - What system calls are used in `make_dept_directory.c' to create this
+    file?
+  - How is the `sizeof()' operator used to simplify some of the
+    computations in `make_dept_directory.c'?
+  - What data is in `cse_depts.dat' and how is it ordered?
+
+
+Solution                                                      :solution:
+--------
+
+  `make_dep_directory.c' uses arrays of structs to create the binary
+  `cse_depts.dat' file.  It writes these directly to files using
+  `write()' system calls.
+
+  The `sizeof()' operator is used to compute the total size of arrays
+  that are known at compile time.  This is spares prevents to need to do
+  manual counting of array sizes: rather than `sizeof(contact_t)*6',
+  `sizeof(ee_dept)' will compute the entire size in bytes of the array.
+
+  From the comments in `make_dept_directory.c' the format of
+  `cse_depts.dat' is as follows:
+
+  ,----
+  | The structure of the binary file is as follows.
+  | 
+  | 1. file_header_t struct
+  |    - identifying bytes
+  |    - size of following array of dept_offset_t array
+  | 2. array of dept_offset_t structs
+  |    - dept_code, offset, and num_contacts
+  |    - length of this array is given in initial file_header_t
+  |    - contains field offset which is bytes at which contacts for an
+  |      associated department start
+  | 3. array of contact_t structs
+  |    - name and email fields
+  |    - array is arranged by department
+  |    - array of dept_offset_t structs indicate where each department starts
+  |      and how many contacts are in it
+  `----
+
+
+B
+~
+
+  Run the `print_department_read' program which takes a binary data file
+  and a department code to print.  Show a few examples of running this
+  program with the valid command line arguments. Include in your demo
+  runs that
+  - Use the `cse_depts.dat' with known and unknown department codes
+  - Use a file other than `cse_depts.dat'
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | > print_department_read cse_depts.dat IT
+  | Dept Name: CS Offset: 104
+  | Dept Name: EE Offset: 2152
+  | Dept Name: IT Offset: 3688
+  | 
+  | 5 Contacts for IT department
+  | Joseph Axberg <jaxberg@umn.edu>
+  | Carl Follstad <follstad@umn.edu>
+  | Valarie Griep <griep003@umn.edu>
+  | Richard Howey <howe0156@umn.edu>
+  | Scott Kerlin <kerli012@umn.edu>
+  | 
+  | > print_department_read cse_depts.dat MUS
+  | Dept Name: CS Offset: 104
+  | Dept Name: EE Offset: 2152
+  | Dept Name: IT Offset: 3688
+  | Department code 'MUS' not found
+  | 
+  | > print_department_read cse_depts.dat CS
+  | Dept Name: CS Offset: 104
+  | Dept Name: EE Offset: 2152
+  | Dept Name: IT Offset: 3688
+  | 
+  | 8 Contacts for CS department
+  | Arindam Banerjee <baner029@umn.edu>
+  | Daniel Boley <boley@umn.edu>
+  | Abhishek Chandra <chandra@umn.edu>
+  | David Hung-Chang Du <du@umn.edu>
+  | Maria Gini <gini@umn.edu>
+  | Stephen Guy <sjguy@umn.edu>
+  | Tian He <tianhe@umn.edu>
+  | Mats Heimdahl <heimdahl@umn.edu>
+  | 
+  | > print_department_read QUESTIONS.txt CS
+  | 'QUESTIONS.txt' does not appear to be a binary department directory file
+  `----
+
+
+C
+~
+
+  Study the source code for `print_department_read' and describe how it
+  initially prints the table of offsets shown below.
+  ,----
+  | Dept Name: CS Offset: 104
+  | Dept Name: EE Offset: 2152
+  | Dept Name: IT Offset: 3688
+  `----
+  What specific sequence of calls leads to this information?
+
+
+Solution                                                      :solution:
+--------
+
+  After checking the command line arguments, the program opens and reads
+  the header information from the file directly into a struct. The
+  header is checked for consistency.  A suitable header indicates the
+  number of departments to expect which is stored in a variable.  A loop
+  is then used to read through each department in the array after the
+  header. These again are read directly into structs and checked for the
+  department code specified on the command line. During the loop, each
+  department and the offset into the file at which its contacts are
+  stored is printed showing the table above.
+
+
+D
+~
+
+  What system call is used to skip immediately to the location in the
+  file where desired contacts are located? What arguments does this
+  system call take? Consult the manual entry for this function to find
+  out how else it can be used.
+
+
+Solution                                                      :solution:
+--------
+
+  The `lseek()' system call changes the position for I/O operations in a
+  file without performing any reads or writes.  In the program it is
+  called as
+  ,----
+  | off_t ret = lseek(fd, offset, SEEK_SET);  // seek to file offset for department found above
+  `----
+  which will set the position to `offset' specifically, an absolute
+  position in the file.  Doing this with offset=0 would move back to the
+  beginning of the file.  There are other options such as with the
+  `SEEK_CUR' which will move forward by an offset from the current
+  position or `SEEK_END' which allows offsets from the end of the file.
+
+
+PROBLEM 2: mmap() and binary files
+==================================
+
+  An alternative to using standard I/O functions is "memory mapped"
+  files through the system call `mmap()'. The program
+  `print_department_mmap.c' provides the functionality as the previous
+  `print_department_read.c' but uses a different mechanism.
+
+
+(A)
+~~~
+
+  Early in `print_department_mmap.c' an `open()' call is used as in the
+  previous program but it is followed shortly by a call to `mmap()' in
+  the lines
+  ,----
+  |   char *file_bytes =
+  |     mmap(NULL, size, PROT_READ, MAP_SHARED,
+  |          fd, 0);
+  `----
+  Look up reference documentation on `mmap()' and describe some of the
+  arguments to it including the `NULL' and `size' arguments. Also
+  describe its return value.
+
+
+Solution                                                      :solution:
+--------
+
+  - The `NULL' indicates that the OS should choose an address for the
+    memory mapping
+  - `size' is how many bytes from the file to map, in this case the
+    entire file
+  - Other arguments indicate that the mapping is read-only but if writes
+    were allowed, they would be shared ac-cross forks
+  - The `fd' argument is the open file to use for the mapping and the
+    last argument is the offset into the file at which to start the
+    mapping
+  - The returned pointer stored in `file_bytes' will reference the first
+    byte of the file.
+
+
+(B)
+~~~
+
+  The initial setup of the program uses `mmap()' to assign a pointer to
+  variable `char *file_bytes'.  This pointer will refer directly to the
+  bytes of the binary file.
+
+  Examine the lines
+  ,----
+  |   ////////////////////////////////////////////////////////////////////////////////
+  |   // CHECK the file_header_t struct for integrity, size of department array
+  |   file_header_t *header = (file_header_t *) file_bytes; // binary header struct is first thing in the file
+  `----
+
+  Explain what is happening here: what value will the variable `header'
+  get and how is it used in subsequent lines.
+
+
+Solution                                                      :solution:
+--------
+
+  `header' will be assigned the same place in memory as `file_bytes' but
+  allows that location in memory to be interpreted as a `file_header_t'
+  struct. It is then used to check the first few bytes for the sequence
+  `{0xDE,'D','I','R'}' and then to extract the number of departments
+  into the `num_depts' variable.
+
+
+(C)
+~~~
+
+  After finishing with the file header, the next section of the program
+  begins with the following.
+  ,----
+  |   ////////////////////////////////////////////////////////////////////////////////
+  |   // SEARCH the array of department offsets for the department named
+  |   // on the command line
+  | 
+  |   dept_offset_t *offsets =           // after file header, array of dept_offset_t structures
+  |     (dept_offset_t *) (file_bytes + sizeof(file_header_t));
+  | 
+  `----
+
+  Explain what value the `offsets_arr' variable is assigned and how it
+  is used in the remainder of the SEARCH section.
+
+
+Solution                                                      :solution:
+--------
+
+  `offsets_arr' is assigned to a position after the file_header_t. It
+  treats that area as an array of `dept_offset_t' structs with length
+  determined by the `num_depts' field in the file header.  That array is
+  scanned printing the department code and byte offset of that
+  department's contacts.  If a department matching the code on the
+  command line is found (like "CS"), then the file offset is recorded in
+  the variable `offset' along with the `num_contacts'.
+
+
+(D)
+~~~
+
+  The final phase of the program begins below
+  ,----
+  |   ////////////////////////////////////////////////////////////////////////////////
+  |   // PRINT out all personnel in the specified department
+  |   ...
+  |   contact_t *dept_contacts = (contact_t *) (file_bytes + offset);
+  `----
+  Describe what value `dept_contacts' is assigned and how the final
+  phase uses it.
+
+
+Solution                                                      :solution:
+--------
+
+  `dept_contacts' is assigned to the byte position determined in the
+  preceding phase: beginning of file (file_bytes) plus the offset.  This
+  area is treated as an array of `contact_t' structs and simply scans
+  through the array printing each contact. The length of the array was
+  determined in the previous phase and noted in the `num_contacts'
+  variable.

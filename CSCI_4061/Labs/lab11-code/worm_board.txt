@@ -1,0 +1,15 @@
+eeeeeeee.l
+eeeEllllll
+eeeelll..l
+eeeellllll
+aaaellllll
+aaalllllll
+aaallglLll
+aaAaagglll
+aaaaagGglg
+aaaaaggggg
+
+E: step  99 ( 1, 3) territory: 21                 
+A: step  99 ( 7, 2) territory: 24                 
+G: step  99 ( 8, 6) territory: 12                 
+L: step  99 ( 6, 7) territory: 40                 

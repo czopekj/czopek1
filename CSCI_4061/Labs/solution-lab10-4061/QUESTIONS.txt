@@ -1,0 +1,232 @@
+                           __________________
+
+                            LAB 10 QUESTIONS
+                           __________________
+
+
+- Name: (FILL THIS in)
+- NetID: (THE kauf095 IN kauf0095@umn.edu)
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `em_server_mq.c' and `em_server_mq.c'
+===============================================
+
+  Examine the source code for `em_server_mq.c' and
+  `em_client_mq.c'. Compile and run these codes running the server in
+  one terminal with clients in another terminal. You may also try
+  `./run_simulation_mq.sh 100' which will start the server and 100
+  clients to communicate with it.
+
+
+A
+~
+
+  After gaining familiarity with the code, describe the lines of code
+  which are used to create POSIX Message Queues.
+  - What specific system calls are used to create/access message queues?
+  - Which of the server/clients create message queues?
+  - How does this compare to the previous FIFO version in the code pack?
+
+
+Solution                                                      :solution:
+--------
+
+  - What specific system calls are used to create message queues?
+    ,----
+    | // em_server_mq.c
+    | struct mq_attr attr = {                                        // attributes of the message queue
+    |   .mq_maxmsg = 10,                                             // queue holds 10 messages before sending blocks (standard system max)
+    |   .mq_msgsize = sizeof(request_t),                             // maximum size of messages
+    | };
+    | 
+    | mqd_t server_qd = mq_open("/em_server_q",                      // descriptor for message queue
+    |                           O_CREAT|O_RDONLY, S_IRUSR|S_IWUSR,   // flags and permissions
+    |                           &attr);                              // set up usin provided attr or NULL for system defaults
+    | 
+    | mqd_t client_qd = mq_open(request.client_queue_name, O_WRONLY);
+    | 
+    | // em_client_mq.c
+    | struct mq_attr attr = {
+    |   .mq_maxmsg = 1,                                            // only expect 1 message back from server
+    |   .mq_msgsize = NAME_LENGTH,                                 // max size of email addresses
+    | };
+    | 
+    | mqd_t client_qd = mq_open(request.client_queue_name,         // descriptor for client queue
+    |                           O_CREAT|O_RDONLY, S_IRUSR|S_IWUSR, // flags and permissions
+    |                           &attr);                            // set up usin provided attr or NULL for system defaults
+    | 
+    | mqd_t server_qd = mq_open("/em_server_q", O_WRONLY);         // open existin server queue
+    `----
+
+    The `attr' object specifies some properties of queues that can be
+    set at creation time.
+
+  - Which of the server/clients create message queues?
+
+    The server creates the request queue named `/em_server_q' while each
+    client creates an individual reply queue named after its PID.
+
+  - How does this compare to the previous FIFO version in the code pack?
+
+    The setup is identical to the previous FIFO version in which the
+    server created a `requests.fifo' while clients create reply FIFO's
+    based on their PIDs.
+
+
+B
+~
+
+  Describe the sending and receiving functions used in the server/client
+  to interact with message queues.
+  - What arguments are required for the sending function?
+  - What arguments are required for the receiving function?
+  - Does the same data type of message go from client to server as from
+    server to client?
+  - What are the equivalent send/receive functions in the FIFO version
+    of the server?
+
+
+Solution                                                      :solution:
+--------
+
+  - What arguments are required for the sending function?
+    ,----
+    | mq_send(client_qd, email, NAME_LENGTH, 0);                   // reply with results to client
+    `----
+    Sends message to queue descriptor `client_qd', message is pointed to
+    in `char *email' and has length `NAME_LENGTH'. The 0 indicates the
+    priority of the message (low priority).
+
+  - What arguments are required for the sending function?
+    ,----
+    | request_t request;
+    | ret = mq_receive(server_qd, (char *) &request,               // receive a message, requires caste
+    |                  sizeof(request_t), NULL);
+    `----
+    Receives a message from queue descriptor `server_qd', stores the
+    result in the `request' struct limiting size to the size of that
+    struct. The NULL indicates no options.
+
+  - Does the same data type of message go from client to server as from
+    server to client?
+
+    Clients send a `request_t' data type to the server which includes
+    two parts, the `query_name' to look up and the `client_queue_name'
+    which allows the server to reply back.
+
+    The server sends a message with a simple string in it to the client
+    which is the email address associated with the `query_name'.
+
+  - What are the equivalent send/receive functions in the FIFO version
+    of the server?
+
+    FIFOs simply use `write()' to send data and `read()' to receive
+    it. These are used in the FIFO versions of the server.
+
+
+C
+~
+
+  Overall, contrast the protocol and architecture of the POSIX Message
+  Queue version of the server/client with the FIFO version studied in
+  last week's lab.  Are there any major similarities or difference
+  between these two?
+
+
+Solution                                                      :solution:
+--------
+
+  The FIFO and Message Queue systems are identical except for the
+  communication mechanism that they use. There are no major differences.
+
+
+PROBLEM 2: The Faulty Server
+============================
+
+  Examine the provided `faulty_em_server.c' and `faulty_em_client.c'
+  which use POSIX Message Queues for communication.  Compile these via
+  `make' and run the server in a terminal with clients in another
+  terminal. This should appear to work normally. However,
+  `./run_simulation_faulty.sh 100' which will launch the server with 100
+  clients will report errors. This problem determines why.
+
+
+A
+~
+
+  Examine the architecture for communication that is used between
+  `faulty_em_server.c' and `faulty_em_client.c'.
+  - How many message queues are there?
+  - What appears to be the protocol for communication?
+
+
+Solution                                                      :solution:
+--------
+
+  - How many message queues are there?
+
+    Only 2 queues in this case, one to send requests to the server
+    called `/em_server_q' and one for replies to clients called
+    `/em_reply_q'
+
+  - What appears to be the protocol for communication?
+
+    Clients send their requests to the server and then the server sends
+    a message on the reply queue. The client reads the message from the
+    single reply queue as its answer.
+
+
+B
+~
+
+  Run the "simulation" script for the faulty server and examine the
+  results.
+  ,----
+  | > ./run_simulation_faulty.sh 100
+  `----
+  To ease the analysis, the script gives clients the expected email
+  associated with each name and the client verifies if it gets the
+  correct email or reports and ERROR.
+
+  For small runs such as with 10 clients, there may be no errors but for
+  larger runs like 100 there are always errors.
+
+  - Construct an argument as to why the protocol used in this version is
+    "faulty" as the name suggests.
+  - Is this issue specific to Message Queues or would FIFOs have similar
+    problems with the faulty protocol?
+  - What concurrency issues are present that are not a problem in the
+    previous message queue/FIFO versions of the server/client?
+
+
+Solution                                                      :solution:
+--------
+
+  - Construct an argument as to why the protocol used in this version is
+    "faulty" as the name suggests.
+
+    The central problem is the use of a single reply message queue.  The
+    server writes its response to the this queue but cannot control
+    which client will get to read from it first. In some cases the
+    result will be read by the correct client but in others, another
+    client will be selected to receive a message not intended for it.
+    Thus with many clients reading from the reply queue in an
+    unpredictable order, some clients inevitably get the wrong response.
+
+  - Is this issue specific to Message Queues or would FIFOs have similar
+    problems with the faulty protocol?
+
+    This issue is not unique to message queues: FIFOs would have the
+    same issue when many clients are attempting to read from the same
+    reply FIFO.
+
+  - What concurrency issues are present that are not a problem in the
+    previous message queue/FIFO versions of the server/client?
+
+    The previous versions of the server used a single request queue but
+    an individual reply queue for each client. Replies when specifically
+    to a single client preventing mixups like the ones in the 2-queue
+    architecture.

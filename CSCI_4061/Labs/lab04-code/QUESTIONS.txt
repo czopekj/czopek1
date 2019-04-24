@@ -1,0 +1,261 @@
+                           __________________
+
+                            LAB 04 QUESTIONS
+                           __________________
+
+
+- Name: Benjamin Wiley
+- NetID: wiley156
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `capture_stdout.c'
+============================
+
+A
+~
+
+  Compile and run the program in `capture_stdout.c'. Show its output.
+    [BenWiley : lab04-code] $ gcc capture_stdout.c 
+    [BenWiley : lab04-code] $ ./a.out
+    Process 72212 Piping
+    72212 Read from my_pipe
+    72212 Read: '72212 In the pipe, five by five'
+
+B
+~
+
+  The calls `dup()' and `dup2()' are used in this program to manipulate
+  file descriptors. Explain the effects of the lines below.
+  ,----
+  | int stdout_bak = dup(STDOUT_FILENO);
+  | dup2(my_pipe[PWRITE], STDOUT_FILENO);
+  | ...
+  | dup2(stdout_bak, STDOUT_FILENO);
+  `----
+    The first dup() call captures a "backup" of the stdout and assigns it to the stdout_bak 
+    variable. The first dup2() call ensures that the child output calls go into the pipe,
+    my_pipe. The second dup2() call directs the child output into the backupt of stdout 
+    created with dup().
+
+C
+~
+
+  The use of `printf()' normally puts output directly on the
+  screen. Explain why the statement
+  ,----
+  | printf("%d In the pipe, five by five",
+  |        getpid());           
+  | 
+  `----
+  does not print to screen as usual.
+    This prints to the pipe since the preceding line called dup2()
+    to my_pipe. This means that child output, such as this printf()
+    statement, is put into my_pipe.
+
+
+D
+~
+
+  Modify the code so that the `In the pipe...' expression is printed by
+  a child process.
+  - Add a `fork()' AFTER `dup2()' redirects standard output but before
+    the print
+  - Add an `if()' to distinguish between parent and child
+  - The child should print then exit
+  - The parent should restore stdout then read from the pipe
+  - Add a `wait()' to guarantee the parent waits for the child to
+    complete prior to reading from the pipe
+  Paste your completed code below.
+
+  int main(){
+    setvbuf(stdout, NULL, _IONBF, 0);        // Turn off I/O buffering
+
+    printf("Process %d Piping\n",getpid());
+    int my_pipe[2];
+    pipe(my_pipe);
+
+    int stdout_bak = dup(STDOUT_FILENO);     // Duplicate stdout so it can be restored later
+    dup2(my_pipe[PWRITE], STDOUT_FILENO);    // Redirect stdout to pipe
+
+    pid_t child = fork();
+
+    if (child == 0) {                          // child
+      printf("%d In the pipe, five by five",   // Should not show up on the screen
+          getpid());           
+      close(my_pipe[PWRITE]);                  // Close the write end of the pipe 
+    } else {                                   // parent 
+      int status;
+      wait(&status);
+
+      if (status == 0) {
+        dup2(stdout_bak, STDOUT_FILENO);         // Restore stdout: redirect to backed up fd
+
+        printf("%d Read from my_pipe\n",getpid());
+        char buf[2048];
+        int bytes_read = read(my_pipe[PREAD], buf, 2048);
+
+        buf[bytes_read] = '\0';                  // Not null-terminated by default, append '\0'
+        close(my_pipe[PREAD]);                   // Close read end
+        printf("%d Read: '%s'\n",getpid(),buf);  // Show earlier output
+      }
+    }
+    
+    
+    
+    return 0;
+  }
+
+
+NOTE on Large Child Output
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  The completed `capture_stdout.c' file should get a child to write into
+  a pipe and the parent to read from that pipe. The parent reading is
+  currently reading as the lines
+  ,----
+  |   char buf[2048];
+  |   int bytes_read = read(my_pipe[PREAD], buf, 2048);
+  `----
+  assume that the child output will be no larger than 2048 bytes.  The
+  next problem demonstrates a useful allocation pattern which can be
+  used to handle large / unknown input sizes.
+
+
+PROBLEM 2 `append_all.c'
+========================
+
+  Examine the code in `append_all.c' which makes use of a number of I/O
+  system calls in an interesting pattern.
+
+
+A
+~
+
+  Compile and run the program and experiment with entering data into it.
+  Show your session and explain why read() system call always seems to
+  read one more character than you type.
+    [BenWiley : lab04-code] $ gcc append_all.c 
+    [BenWiley : lab04-code] $ ./a.out
+    Enter text. Press Ctrl-d to end input
+    > hello
+    read 4 bytes
+    input uses 4 of 4 allocated bytes
+    total input is:
+    -------
+    hell-------
+    wrote 4 bytes
+    > read 2 bytes
+    input uses 6 of 8 allocated bytes
+    total input is:
+    -------
+    hello
+    -------
+    wrote 6 bytes
+    > more than eight
+    read 2 bytes
+    input uses 8 of 8 allocated bytes
+    total input is:
+    -------
+    hello
+    mo-------
+    wrote 8 bytes
+    > read 8 bytes
+    input uses 16 of 16 allocated bytes
+    total input is:
+    -------
+    hello
+    more than -------
+    wrote 16 bytes
+    > read 6 bytes
+    input uses 22 of 32 allocated bytes
+    total input is:
+    -------
+    hello
+    more than eight
+    -------
+    wrote 22 bytes
+
+    It reads one more byte due to reading the end line '\0' character to 
+    find the end of the input string/char array.
+
+B
+~
+
+  Describe the initialize size of the array `input' in `append_all.c'
+  and how it changes over the run of the program. What standard C
+  function is used to initially allocate memory for `input' and what C
+  function is used to alter its size? How do these functions work?
+    The initial size of array is size of four chars. Initially, the memory is 
+    allocated using malloc, but realloc is used to alter the size of the malloced
+    memory on the heap. Malloc just allocates the space on the heap, and realloc 
+    extends. 
+
+
+C
+~
+
+  Restart the `append_all.c' program and type the specific input bleow
+  in at the prompts. Show the output produced and describe why it is a
+  little funny. How does this relate to the `read()' system call that is
+  used in the program's main loop?
+
+  ,----
+  | > 123456
+  `----
+    [BenWiley : lab04-code] $ ./a.out
+    Enter text. Press Ctrl-d to end input
+    > 123456
+    read 4 bytes
+    input uses 4 of 4 allocated bytes
+    total input is:
+    -------
+    1234-------
+    wrote 4 bytes
+    > read 3 bytes
+    input uses 7 of 8 allocated bytes
+    total input is:
+    -------
+    123456
+    -------
+    wrote 7 bytes
+
+    Only reads the current max size of the buffer for reading. That is why it only first reads
+    four chars until it loops through and reallocates space for 8 bytes. 
+D
+~
+
+  In append_all.c, the read call is followed by a commented line:
+  ,----
+  |     int nread = read(STDIN_FILENO, input+cur_pos, max_read); // perform read()
+  |     // int nread = read(STDIN_FILENO, input, max_read);         // error using read()
+  `----
+  This commented line contains a common error for those new the use of
+  the `read()' system call.
+
+  Comment the current read() call and uncomment the line marked as an
+  error. Recompile the program and run it entering various
+  inputs. Describe why this line is error and relate it to what the
+  program now erroneously produces for output.
+    [BenWiley : lab04-code] $ ./a.out
+    Enter text. Press Ctrl-d to end input
+    > 123456
+    read 4 bytes
+    input uses 4 of 4 allocated bytes
+    total input is:
+    -------
+    1234-------
+    wrote 4 bytes
+    > read 3 bytes
+    input uses 7 of 8 allocated bytes
+    total input is:
+    -------
+    56
+    4-------
+    wrote 7 bytes
+
+    It does not account for keeping track of the beginning of the input 
+    after it reallocates and reads later bytes. Therefore, it does not 
+    keep track of its current position and does not accout for this. 

@@ -1,0 +1,109 @@
+                           __________________
+
+                            LAB 05 QUESTIONS
+                           __________________
+
+
+- Name: Benjamin Wiley
+- NetID: wiley156
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `dirops.c'
+====================
+
+A
+~
+
+  Examine the source code of `dirops.c' closely. It makes use of a
+  variety of system calls to produce a semi-interesting effect.  Compile
+  and run it several times. Describe the overall intent of the program
+  based on its output and the code you understand.
+      wiley156@csel-kh1250-02:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab05-code $ gcc dirops.c
+      wiley156@csel-kh1250-02:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab05-code $ ./a.out
+      .                              :      8 bytes
+      ..                             :      7 bytes
+      3K.txt                         :  13893 bytes
+      a.out                          :  12968 bytes
+      QUESTIONS.txt                  :   2296 bytes
+      dirops.c                       :   1284 bytes
+      8K.txt                         :  39379 bytes
+      4K.txt                         :  19129 bytes
+      Largest file: 8K.txt with 39379 bytes
+      Copying 8K.txt to 8K.txt.copy
+      Copy complete
+      wiley156@csel-kh1250-02:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab05-code $ ./a.out
+      .                              :      9 bytes
+      ..                             :      7 bytes
+      8K.txt.copy                    :  39936 bytes
+      3K.txt                         :  13893 bytes
+      a.out                          :  12968 bytes
+      QUESTIONS.txt                  :   2296 bytes
+      dirops.c                       :   1284 bytes
+      8K.txt                         :  39379 bytes
+      4K.txt                         :  19129 bytes
+      Largest file: 8K.txt.copy with 39936 bytes
+      Copying 8K.txt.copy to 8K.txt.copy.copy
+      Copy complete
+
+
+
+B
+~
+
+  What set of system calls is used by the program to determine all the
+  files in the current directory? Describe briefly how these calls work
+  together.
+  |   Uses opendir() function on current directory to access the directory.
+  |   After this, it iterates through the directory's files using readdir(dir)
+  |   which returns struct with properties such as the file's name.
+
+
+C
+~
+
+  Identify the system call that `dirops.c' uses to find the sizes of
+  files. Describe briefly how this call works.
+  |   Utilizes st_size property of the of the file's stats returned
+  |   by stat() call. This stat call returns statistics on the file,
+  |   and one of those statistics is its size.
+
+
+D
+~
+
+  The following line sets up the read/write permissions that the copied
+  file will have.
+  ,----
+  | mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP;
+  `----
+  Modify this line so that the copied file is readable by the group as
+  well as the user.
+
+  /Optional challenge:/ Set the permissions to be identical to the
+  original file. `stat()' is one way to find out the permissions for the
+  original file.
+
+
+E
+~
+
+  `dirops.c' contains a subtle bug in the following bit of code towards
+  the end of the file.
+  ,----
+  |   while( (nbytes = read(infd, buf, BUFSIZE)) > 0){
+  |     write(outfd, buf, BUFSIZE);
+  |   }
+  `----
+  You should observe that every time program is run, it will identify a
+  copied file as the largest and make another copy due to this bug. It
+  may help to examine the ends of the copied files with the `tail
+  file.txt.copy' command which will show the last 10 lines.
+
+	|   while( (nbytes = read(infd, buf, BUFSIZE)) > 0){
+  	|     write(outfd, buf, nbytes);
+  	|   }
+
+  	The loop just wrote BUFSIZE bytes every time instead of the number of bytes read so there would be chunks of trailing empty bytes. 

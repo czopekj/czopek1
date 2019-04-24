@@ -1,0 +1,118 @@
+                           __________________
+
+                            LAB 10 QUESTIONS
+                           __________________
+
+
+- Name: Josh Czopek
+- NetID: czope001
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `em_server_mq.c' and `em_server_mq.c'
+===============================================
+
+  Examine the source code for `em_server_mq.c' and
+  `em_client_mq.c'. Compile and run these codes running the server in
+  one terminal with clients in another terminal. You may also try
+  `./run_simulation_mq.sh 100' which will start the server and 100
+  clients to communicate with it.
+
+
+A
+~
+
+  After gaining familiarity with the code, describe the lines of code
+  which are used to create POSIX Message Queues.
+  - What specific system calls are used to create/access message queues?
+      mq_open, mq_receive, mq_send
+  - Which of the server/clients create message queues?
+      server makes the queue for requests, client makes queue for replies
+  - How does this compare to the previous FIFO version in the code pack?
+      same as the FIFO version
+
+
+B
+~
+
+  Describe the sending and receiving functions used in the server/client
+  to interact with message queues.
+  - What arguments are required for the sending function?
+      mq_send(client_qd, email, NAME_LENGTH, 0);
+      client_qd is the name of the queue to send the message to,
+      email is the message, NAME_LENGTH is the length of the message,
+      0 is the priority
+  - What arguments are required for the receiving function?
+      mq_receive(client_qd, response, NAME_LENGTH, NULL);
+      client_qd is the queue to receive messages in,
+      response is the message, NAME_LENGTH is the message length,
+      0 is the priority
+  - Does the same data type of message go from client to server as from
+    server to client?
+      client sends a request_t to the server, the server sends a string back
+  - What are the equivalent send/receive functions in the FIFO version
+    of the server?
+      write() and read()
+
+
+C
+~
+
+  Overall, contrast the protocol and architecture of the POSIX Message
+  Queue version of the server/client with the FIFO version studied in
+  last week's lab.  Are there any major similarities or difference
+  between these two?
+
+  mainly the same, different system commands
+
+
+PROBLEM 2: The Faulty Server
+============================
+
+  Examine the provided `faulty_em_server.c' and `faulty_em_client.c'
+  which use POSIX Message Queues for communication.  Compile these via
+  `make' and run the server in a terminal with clients in another
+  terminal. This should appear to work normally. However,
+  `./run_simulation_faulty.sh 100' which will launch the server with 100
+  clients will report errors. This problem determines why.
+
+
+A
+~
+
+  Examine the architecture for communication that is used between
+  `faulty_em_server.c' and `faulty_em_client.c'.
+  - How many message queues are there?
+      one request queue, one reply queue
+  - What appears to be the protocol for communication?
+      client sends request, server replies, client reads the message
+
+B
+~
+
+  Run the "simulation" script for the faulty server and examine the
+  results.
+  ,----
+  | > ./run_simulation_faulty.sh 100
+  `----
+  To ease the analysis, the script gives clients the expected email
+  associated with each name and the client verifies if it gets the
+  correct email or reports and ERROR.
+
+  For small runs such as with 10 clients, there may be no errors but for
+  larger runs like 100 there are always errors.
+
+  - Construct an argument as to why the protocol used in this version is
+    "faulty" as the name suggests.
+        the server only sends replies to one queue, which is read from by all
+        clients. this makes them sometimes read the wrong response from the server,
+        and get the wrong message.
+  - Is this issue specific to Message Queues or would FIFOs have similar
+    problems with the faulty protocol?
+        FIFOs would have the same problem.
+  - What concurrency issues are present that are not a problem in the
+    previous message queue/FIFO versions of the server/client?
+        the single queue for responses is causing the issue, unlike in the
+        other system where each client had their own queue.

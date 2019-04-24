@@ -1,0 +1,310 @@
+                           __________________
+
+                            LAB 07 QUESTIONS
+                           __________________
+
+
+- Name: (FILL THIS in)
+- NetID: (THE kauf0095 IN kauf0095@umn.edu)
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete the
+lab.
+
+
+PROBLEM 1: Virtual Memory and pmap
+==================================
+
+(A)
+~~~
+
+  Examine the source code for the provided `memory_parts.c'
+  program. Identify what region of program memory you expect the
+  following variables to be allocated into:
+  - global_arr[]
+  - local_arr[]
+  - malloc_arr
+
+
+Solution                                                      :solution:
+--------
+
+  - global_arr[] should be in the global area of memory
+  - local_arr[] should be on the function call stack in the frame
+    associated with main
+  - variable malloc_arr will be on the stack but the array it points to
+    should be on the heap
+
+
+(B)
+~~~
+
+  Compile the `memory_parts' using the provided Makefile.
+  ,----
+  | > make memory_parts
+  `----
+  Run the program and note that it prints several pieces of information
+  - The addresses of several of the variables allocated
+  - Its Process ID (PID) which is a unique number used to identify the
+    running program. This is an integer.
+  For example, the output might be
+  ,----
+  | > ./memory-parts
+  | 0x55dc6442c98a : main()
+  | 0x55dc6462d0c0 : global_arr
+  | 0x7ffc7f3e0310 : local_arr
+  | 0x55dc652ad260 : malloc_arr
+  | 0x7f53c5280000 : mmap'd file
+  | my pid is 11160
+  | press any key to continue
+  `----
+  so the programs PID is 11160
+
+  The program will also stop at this point until a key is pressed. DO
+  NOT PRESS A KEY YET.
+
+  Open another terminal and type the following command in that new
+  terminal.
+  ,----
+  | > pmap THE-PID-NUMBER-THAT-WAS-PRINTED-EARLY
+  `----
+
+  Paste the output of pmap below.
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | > pmap 11160
+  | 11160:   ./memory_parts
+  | 000055dc6442c000      4K r-x-- memory_parts
+  | 000055dc6462c000      4K r---- memory_parts
+  | 000055dc6462d000      4K rw--- memory_parts
+  | 000055dc6462e000      4K rw---   [ anon ]
+  | 000055dc652ad000    132K rw---   [ anon ]
+  | 00007f53c4ca6000   1720K r-x-- libc-2.26.so
+  | 00007f53c4e54000   2044K ----- libc-2.26.so
+  | 00007f53c5053000     16K r---- libc-2.26.so
+  | 00007f53c5057000      8K rw--- libc-2.26.so
+  | 00007f53c5059000     16K rw---   [ anon ]
+  | 00007f53c505d000    148K r-x-- ld-2.26.so
+  | 00007f53c5254000      8K rw---   [ anon ]
+  | 00007f53c5280000      4K r---- gettysburg.txt
+  | 00007f53c5281000      4K r---- ld-2.26.so
+  | 00007f53c5282000      4K rw--- ld-2.26.so
+  | 00007f53c5283000      4K rw---   [ anon ]
+  | 00007ffc7f3c1000    132K rw---   [ stack ]
+  | 00007ffc7f3e6000     12K r----   [ anon ]
+  | 00007ffc7f3e9000      8K r-x--   [ anon ]
+  |  total             4276K
+  `----
+
+
+(C)
+~~~
+
+  pmap prints out the virtual address space table for the program. The
+  leftmost column is a virtual address mapped by the OS for the program
+  to some physical location.  The next column is the size of the area of
+  memory associated with that starting address. The 3rd column contains
+  permissions of the program has for the memory area: r for read, w for
+  read, x for execute. The final column is contains any identifying
+  information about the memory area that pmap can discern.
+
+  Compare the addresses of variables and functions from the paused
+  program to the output. Try to determine the virtual address space in
+  which each variable resides and what region of program memory that
+  virtual address must belong to (stack, heap, globals, text).  In some
+  cases, the identifying information provided by pmap may make this
+  obvious.
+
+
+Solution                                                      :solution:
+--------
+
+  --------------------------------------------------------------------------------
+   "Variable"  Region   VirtAddr        Region from pmap                          
+  --------------------------------------------------------------------------------
+   main()      text     0x55dc6442c98a  000055dc6442c000    4K r-x-- memory_parts 
+   global_arr  globals  0x55dc6462d0c0  000055dc6462d000    4K rw--- memory_parts 
+   local_arr   stack    0x7ffc7f3e0310  00007ffc7f3c1000  132K rw---   [ stack ]  
+   malloc_arr  heap     0x55dc652ad260  000055dc652ad000  132K rw---   [ anon ]   
+  --------------------------------------------------------------------------------
+
+
+(D)
+~~~
+
+  The minimum size of any virtual area of memory appears to be 4K. Why
+  is this the case?
+
+
+Solution                                                      :solution:
+--------
+
+  The size of a memory page in most systems is 4K. Whole pages are
+  mapped in virtual memory so the minimum chunk of memory that is
+  mappable is 1 page = 4K.
+
+
+(E)
+~~~
+
+  Notice that in addition to the "normal" variables that are mapped,
+  there is also an entry for the mmap()'d file 'gettysburg.txt' in the
+  virtual address table.  The mmap() function is explored in the next
+  problem but note its calling sequence which involves use of a couple
+  system calls:
+  1. `open()' which is a low level file opening call which returns a
+     numeric file descriptor.
+  2. `fstat()' which obtains information such as size for an open file
+     based on its numeric file descriptor. The `stat()' system call was
+     explored earlier in the class and does the same thing provided the
+     name of a file.
+
+
+PROBLEM 2 `birth_death.c'
+=========================
+
+A
+~
+
+  Compile `circle_of_life.c' to the program `circle_of_life' and run
+  it. Examine the results and feel free to terminate execution
+  early. Examine the source code if desired though it is merely a
+  print/sleep loop.
+
+  Compile `birth_death.c' to the program `birth_death'. This program is
+  invoked with two arguments, another program name and a "lifetime"
+  which is an integer number of seconds. Run it like
+  ,----
+  | $> ./birth_death ./circle_of_life 4
+  `----
+  and show the output below.
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | > gcc -o circle_of_life circle_of_life.c 
+  | > gcc -o birth_death birth_death.c
+  | > birth_death circle_of_life 4
+  | Nants ingonyama bagithi baba
+  | Sithi uhm ingonyama
+  | Nants ingonyama bagithi baba
+  | Sithi uhm ingonyama
+  | kill result: 0
+  | child process 9189 terminated with signal 2
+  `----
+
+
+B
+~
+
+  Examine the source code for `birth_death.c' and determine the system
+  call the parent program (`birth_death') uses to send signals to the
+  child program. Paste this line below and explain which signal is being
+  sent.
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | int result = kill(pid,SIGINT);           // send a interrupt signal to child
+  `----
+  Sends the interrupt signal to child.
+
+
+C
+~
+
+  `birth_death.c' waits for a child to finish then outputs what signal
+  caused it to be terminated if that was the cause of death. Paste the
+  lines of code which determine if a child was terminated due to a
+  signal below and mention the macros used for this purpose.
+
+
+Solution                                                      :solution:
+--------
+
+  `WIFISGNALED()' is used to check whether the child was signaled. If it
+  was, `WTERMSIG()' reports which signal terminated it.
+
+  ,----
+  |   if(WIFSIGNALED(status)){                   // check if a signal ended the child
+  |     printf("child process %d terminated with signal %d\n",
+  |            pid,WTERMSIG(status));
+  |   }
+  `----
+
+
+D
+~
+
+  Compile the program `no_interruptions.c' and run it with
+  `birth_death'. Show your results below.
+
+  Note that you may need to send signals to `no_interruptions' to
+  forcibly end it. The `pkill' command is useful for this as in
+  ,----
+  | pkill no_inter        # send TERM signal to proc name matching "no_inter"
+  | pkill -KILL no_inter  # send KILL signal to proc name matching "no_inter"
+  `----
+
+
+Solution                                                      :solution:
+--------
+
+  ,----
+  | > ./birth_death ./no_interruptions 2
+  | Ma-na na-na!
+  | 
+  | No SIGINT-erruptions allowed.
+  | Ma-na na-na!
+  | kill result: 0
+  | Ma-na na-na!
+  | kill result: 0
+  | 
+  | No SIGINT-erruptions allowed.
+  | Ma-na na-na!
+  | Ma-na na-na!
+  | kill result: 0
+  | 
+  | ...
+  | 
+  | No SIGINT-erruptions allowed.
+  | Ma-na na-na!
+  | Ma-na na-na!
+  | kill result: 0
+  | 
+  | No SIGINT-erruptions allowed.
+  | Ma-na na-na!
+  | child process 9858 terminated with signal 9
+  `----
+  Continues until `pkill -KILL no_inter' is run in a different shell.
+
+
+E
+~
+
+  Examine the `no_interruptions.c' code and describe how it is able to
+  avoid being killed when receiving the interrupt and TERM signals. Show
+  the lines of code used to accomplish this signal handling.
+
+
+Solution                                                      :solution:
+--------
+
+  This program sets up signal handlers at the beginning via
+  ,----
+  | // Set handling functions for programs
+  | signal(SIGINT, handle_SIGINT); 
+  | signal(SIGTERM, handle_SIGTERM);
+  `----
+
+  When receiving one of the above signals, the corresponding function is
+  run simply prints and resets the handler which effectively ignores the
+  signals.

@@ -1,0 +1,171 @@
+                           __________________
+
+                            LAB 02 QUESTIONS
+                           __________________
+
+
+- Name: Benjamin Wiley
+- NetID: wiley156
+
+Answer the questions below according to the lab specification. Write
+your answers directly in this text file and submit it to complete Lab01.
+
+
+PROBLEM 1 `fork1.c'
+===================
+
+A
+~
+
+  Compile and run the program in `fork1.c'. Show it's output below.
+  -------------------
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ gcc fork1.c
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ ./a.out
+    I am number 0, my pid is 9258
+    I am number 1, my pid is 9259
+    I am number 2, my pid is 9260
+    I am number 3, my pid is 9261
+    I am number 4, my pid is 9262
+    I am number 5, my pid is 9263
+    I am number 8, my pid is 9257
+    I am number 6, my pid is 9264
+    I am number 7, my pid is 9265
+  -------------------
+
+B
+~
+
+  Is the output ordered or disordered with respect to the "I am
+  number..." statements? Why?
+  -------------------
+    The output is not ordered since the pid numbers increase until number
+    8, but number 8 is not ordered and the numbers are not arranged sequentially.
+    Basically, all are ordered except for the number 8 which is inserted between
+    numbers 5 and 6.
+
+
+C
+~
+
+  Add calls to the wait() or waitpid() function to ensure that the
+  output is ordered. Paste your code below.
+  -----------------
+    int main(void) {
+      int i;
+      for(i = 0; i<8; i++){
+        pid_t child = fork();
+        if(child == 0){
+          break;
+        } else {
+          int status;
+          wait(&status);
+        }
+      }
+      printf("I am number %d, my pid is %d\n",i,getpid());
+      return 0;
+    }
+  -----------------
+
+
+D
+~
+
+  How many parents and children are there in this program? What is their
+  arrangement?
+  -----------------
+    There are nine pids returned so there are 8 child processes. The if statement
+    is the child where the else statement creates the parent elements. Each
+    iteration of the for loop creates another child.
+  -----------------
+
+
+PROBLEM 2 `fork-exec1.c'
+========================
+
+A
+~
+
+  Compile and run the program in `fork-exec1.c'. Show it's output below.
+  -----------------
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ gcc fork-exec1.c
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ ./a.out
+    Running command 'ls'
+    ------------------
+    total 27K
+    drwx------ 2 wiley156 CSEL-student    6 Feb  4 10:32 .
+    drwx------ 4 wiley156 CSEL-student    4 Feb  4 10:18 ..
+    -rwx------ 1 wiley156 CSEL-student 8.3K Feb  4 10:32 a.out
+    -rw------- 1 wiley156 CSEL-student  302 Feb  4 10:28 fork1.c
+    -rw------- 1 wiley156 CSEL-student  360 Sep 13  2017 fork-exec1.c
+    -rw------- 1 wiley156 CSEL-student 3.0K Feb  4 10:31 QUESTIONS.txt
+  -----------------
+
+
+
+B
+~
+
+  Adjust the contents of the `child_argv[]' array. Try remove the "-l"
+  element, try adding on ".." prior to the final NULL, or make other
+  modifications INCLUDING for the 0th "ls" string.  Recompile and
+  describe whether the output has changed.
+  -----------------
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ gcc fork-exec1.c
+    wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ ./a.out
+    Running command 'ls'
+    ------------------
+    .  ..  lab01-code  lab02-code
+
+    It ran the 'ls' statement on the directory above the previous lab02-code folder.
+    This makes sense since the '..' command tells the terminal to go up one level
+    from the current directory.
+
+
+C
+~
+
+  Change the child_cmd string from "ls" to be something else like "gcc"
+  or "cat". Recompile ad explain what happens now.
+
+  wiley156@csel-kh1250-04:/home/wiley156/CSCI4061/CSCI4061_GitRepo/Labs/lab02-code $ ./a.out
+  Running command 'gcc'
+  ------------------
+  ls: error: unrecognized command line option ‘-ah’; did you mean ‘-h’?
+
+  The program changed to state that it was running the 'gcc' command, but
+  -ah flag was not recognized by the child command of 'gcc'
+
+
+D
+~
+
+  Currently `fork-exec1.c' does not reach the bottom statements.
+  ,----
+  |   printf("------------------\n");
+  |   printf("Finished\n");
+  `----
+  Correct this by doing the following:
+  - Fork a child process
+  - Have ONLY the child process call execvp()
+  - Have the parent process wait() for the child
+  Paste your code below.
+
+    int main(void){
+
+      char *child_argv[] = {"ls","-ah", "..", NULL};
+      char *child_cmd = "ls";
+
+      printf("Running command '%s'\n",child_cmd);
+      printf("------------------\n");
+      pid_t child_pid = fork();
+
+      if(child_pid == 0) {
+        execvp(child_cmd, child_argv);
+      } else {
+        int status;
+        wait(&status);
+      }
+      printf("------------------\n");
+      printf("Finished\n");
+      return 0;
+    }
